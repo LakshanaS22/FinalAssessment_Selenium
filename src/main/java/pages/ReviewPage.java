@@ -14,6 +14,8 @@ import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.ArrayList;
+
 
 public class ReviewPage {
     private WebDriver driver;
@@ -222,40 +224,50 @@ public class ReviewPage {
     }
 
     public void seatSelection() {
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
-        JavascriptExecutor js = (JavascriptExecutor) driver;
+    WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+    JavascriptExecutor js = (JavascriptExecutor) driver;
+
+    try {
         js.executeScript("window.scrollBy(0, 500)");
+        wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath(ReviewPageLocators.SEAT_MAP)));
+        List<WebElement> allSeats = driver.findElements(By.xpath("//div[@class='seats-layout-v2styles__ToolTip-sc-usmql2-5']"));
+        System.out.println("Total seats available for selection: " + allSeats.size());
 
-        try {
-            wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath(ReviewPageLocators.SEAT_MAP)));
-            List<WebElement> availableSeats = driver.findElements(By.xpath(ReviewPageLocators.AVAILABLE_SEATS));
-
-            if (availableSeats.size() >= 2) {
-                for (int i = 0; i < 2; i++) {
-                    js.executeScript("arguments[0].scrollIntoView(true);", availableSeats.get(i));
-                    wait.until(ExpectedConditions.elementToBeClickable(availableSeats.get(i)));
-                    availableSeats.get(i).click();
-                }
-                System.out.println("Successfully selected 2 seats.");
-            } else {
-                System.out.println("Not enough available seats to select.");
+        List<WebElement> availableSeats = new ArrayList<>();
+        for (WebElement seat : allSeats) {
+            WebElement seatImage = seat.findElement(By.tagName("img"));
+            String seatImageSrc = seatImage.getAttribute("src");
+            if (!seatImageSrc.contains("cross.png")) {
+                availableSeats.add(seat);
             }
-
-            WebElement proceedButton = driver.findElement(By.xpath(ReviewPageLocators.PROCEED_BUTTON_SEAT));
-            js.executeScript("arguments[0].scrollIntoView(true);", proceedButton);
-            wait.until(ExpectedConditions.elementToBeClickable(proceedButton));
-            proceedButton.click();
-
-            WebElement skipToPaymentButton = wait.until(ExpectedConditions.elementToBeClickable(
-                    By.xpath(ReviewPageLocators.SKIP_TO_PAYMENT_BUTTON)
-            ));
-            js.executeScript("arguments[0].scrollIntoView(true);", skipToPaymentButton);
-            skipToPaymentButton.click();
-            System.out.println("Clicked 'Skip to Payment' button successfully.");
-        } catch (Exception e) {
-            e.printStackTrace();
-            System.out.println("An error occurred during seat selection or skipping to payment.");
         }
-    }
 
+        System.out.println("Unbooked seats available: " + availableSeats.size());
+
+        if (availableSeats.size() >= 2) {
+            for (int i = 0; i < 2; i++) {
+                WebElement seatToSelect = availableSeats.get(i);
+                js.executeScript("arguments[0].scrollIntoView(true);", seatToSelect);
+                wait.until(ExpectedConditions.elementToBeClickable(seatToSelect));
+                seatToSelect.click();
+                System.out.println("Selected seat: " + seatToSelect.getAttribute("id"));
+            }
+        } else {
+            System.out.println("Not enough unbooked seats available for selection.");
+        }
+        WebElement proceedButton = driver.findElement(By.xpath(ReviewPageLocators.PROCEED_BUTTON_SEAT));
+        js.executeScript("arguments[0].scrollIntoView(true);", proceedButton);
+        wait.until(ExpectedConditions.elementToBeClickable(proceedButton));
+        proceedButton.click();
+        WebElement skipToPaymentButton = wait.until(ExpectedConditions.elementToBeClickable(
+                By.xpath(ReviewPageLocators.SKIP_TO_PAYMENT_BUTTON)
+        ));
+        js.executeScript("arguments[0].scrollIntoView(true);", skipToPaymentButton);
+        skipToPaymentButton.click();
+        System.out.println("Clicked 'Skip to Payment' button successfully.");
+    } catch (Exception e) {
+        e.printStackTrace();
+        System.out.println("An error occurred during seat selection or skipping to payment.");
+    }
+}
 }
